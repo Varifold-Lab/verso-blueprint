@@ -62,6 +62,7 @@ lean_lib VersoBlueprintTests where
   roots := #[
     `VersoBlueprintTests.Blueprint.Support,
     `VersoBlueprintTests.BlueprintAssets,
+    `VersoBlueprintTests.BlueprintContributions,
     `VersoBlueprintTests.BlueprintImportedContributions,
     `VersoBlueprintTests.BlueprintImportedContributions.ConflictingProofs,
     `VersoBlueprintTests.BlueprintImportedContributions.ConflictingProofsReverse,
@@ -75,6 +76,7 @@ lean_lib VersoBlueprintTests where
     `VersoBlueprintTests.BlueprintImportedContributions.AuthorityReverse,
     `VersoBlueprintTests.BlueprintAutoDeps,
     `VersoBlueprintTests.BlueprintAttribute,
+    `VersoBlueprintTests.BlueprintAttribute.OrderRoundtrip,
     `VersoBlueprintTests.BlueprintAttributeRendering,
     `VersoBlueprintTests.BlueprintPlacementContracts,
     `VersoBlueprintTests.BlueprintAttributeLateRendering,
@@ -138,3 +140,9 @@ lean_exe «blueprint-test-docs» where
   root := `BlueprintTestDocsMain
   srcDir := "tests"
   supportInterpreter := true
+
+-- Optional native scaling probe; not part of normal builds or the test driver.
+lean_exe «blueprint-contribution-bench» where
+  root := `BlueprintContributionBench
+  srcDir := "tests"
+  moreLeancArgs := #["-O3"]
