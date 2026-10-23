@@ -1,13 +1,15 @@
 # Verification lane: strengthen the production proof boundary
 
 Owner: contribution/verification lane.
-Status: V1 implemented; V2a is the next bounded milestone.
+Status: V1 and V2a implemented; V2b is the next bounded milestone.
 Foundation: [#467](https://github.com/leanprover/verso-blueprint/pull/467)
 established the production identified-evidence resolver and its laws;
 [#469](https://github.com/leanprover/verso-blueprint/pull/469) centralized admission
 and separated node payloads from identified association and priority evidence.
-Merged baseline: `fab2fc4470253bd854fca99c0530809357af5c54` on `v4.35.0`
-(2026-10-23), including #469. All GitHub checks passed before this work began.
+V1 baseline: `fab2fc4470253bd854fca99c0530809357af5c54` on `v4.35.0`
+(2026-10-23), including #469. V2a baseline:
+`4943d3335ffa9221a39949e60836a8ad5dc2a456`, including
+[#498](https://github.com/leanprover/verso-blueprint/pull/498).
 V1 validation covers production/law builds, the full Lean/integration driver,
 and the new/retained theorem axiom audit; local evidence remains untracked.
 
@@ -27,7 +29,7 @@ coordination records.
 | Ticket | Deliverable | Depends on | Scope |
 | --- | --- | --- | --- |
 | V1 (implemented) | Assembly acceptance, actual resolver-result bridge, input-facing priority laws | Landed #467 and #469 | `NodeAssembly/Laws.lean`; separate direct accepted-node return cleanup and regression |
-| V2a | Snapshot merge canonical union, normalization, uniqueness, and presence laws | V1 | Law module for `ExternalRef.mergeSnapshots` |
+| V2a (implemented) | Snapshot merge canonical union, normalization, uniqueness, and presence laws | V1 | Law module for `ExternalRef.mergeSnapshots` |
 | V2b | Raw/present membership on each facet; `Node.leanDecls` union; payload frame | V2a | Assembly/data law modules |
 | V3 | Semantic environment coherence and accepted index exactness | V2b; merged #469 admission boundary | Pure state transitions and their law modules; boundary regressions |
 | V4 | Conservative completion through snapshot merge and `nodeCodeHealth` | V2a; agreed status/coverage contract | Status/health law modules; coordinate with axiom-analysis owner |
@@ -89,17 +91,50 @@ permit it, and the returned node's priority agrees with the original identified
 evidence. This does not yet prove actual node declaration membership, producer
 correctness, environment coherence, or whole-database confluence.
 
-## V2: facts reach the actual node
+## V2a: snapshot canonical union and presence (implemented)
 
-Next bounded milestone: V2a, a law module for the production
-`ExternalRef.mergeSnapshots` implementation. Limit its first ticket to the four
-snapshot properties below. Facet folds and actual node membership remain V2b;
-no environment or completion policy work belongs in V2a.
+Behavior change: none. The proof-only
+[`ExternalRef/Laws.lean`](../../src/VersoBlueprint/ExternalRef/Laws.lean)
+proves properties of the production `ExternalRef.mergeSnapshots` loop by showing
+it equals the same indexed fold. Its local index-comparator laws and loop
+invariants leave production imports unchanged and add no API axioms. Both `current` and
+`incoming` are arbitrary arrays, including duplicates and missing references.
 
-First prove the actual snapshot merge preserves exactly the union of canonical
-names, normalizes macro scopes, emits unique canonical names, and preserves
-presence iff some corresponding input is present. Distinguish raw references
-from present associations; missing references remain useful evidence.
+1. `mergeSnapshots_canonical_union`: output canonical fields are exactly the
+   union of input canonical fields after one `eraseMacroScopes` application.
+   This is raw membership, independent of presence.
+2. `mergeSnapshots_normalized`: each output canonical field equals a one-pass
+   erased input canonical field.
+3. `mergeSnapshots_canonical_nodup`: output canonical fields have no duplicates.
+4. `mergeSnapshots_present_iff`: a canonical name has a present output iff some
+   input with that one-pass erased key is present.
+   `mergeSnapshots_ref_present_iff` states the same fact for each output's
+   actual `present` field.
+5. `mergeSnapshots_normalized_fixed`: output canonical fields are erasure-fixed
+   under the explicit premise that every input's one-pass erasure is stable.
+   This premise is necessary: for arbitrary `Name` values, nested `_@` / `_hyg`
+   suffixes can erase to a prefix that still has macro scopes. No repeated
+   erasure or change to production canonicalization is part of this ticket.
+
+Acceptance commands:
+
+```sh
+python3 -m scripts.blueprint_harness require-branch-role default_dev
+scripts/lean-low-priority lake build VersoBlueprint +VersoBlueprint.Contributions.Laws:olean +VersoBlueprint.NodeAssembly.Laws:olean +VersoBlueprint.ExternalRef.Laws:olean
+scripts/lean-low-priority lake lean tests/verification/AssemblyAxiomAudit.lean
+git diff --check
+```
+
+CI builds the new law module explicitly and the tracked audit prints the six
+new theorem dependencies alongside the existing assembly and contribution laws.
+No facet, payload, environment, producer, status, or completion claim follows
+from V2a alone. Missing references remain useful evidence in the raw union.
+
+## V2b: facts reach the actual node
+
+Next bounded milestone: lift the snapshot laws through facet folds and prove
+actual accepted-node declaration membership and the payload frame. Keep
+environment and completion policy work in their separate follow-ups.
 
 Lift through each facet's support fold independently. Then prove, for the
 actual accepted node, that `Node.leanDecls` contains exactly selected

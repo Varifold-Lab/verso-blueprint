@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 -- Print production proof dependencies for review; this is not an automated allowlist check.
 import VersoBlueprint.NodeAssembly.Laws
+import VersoBlueprint.ExternalRef.Laws
 
 #print axioms Informal.Contributions.collectorLaws
 #print axioms Informal.Contributions.resolverLaws
@@ -21,3 +22,10 @@ import VersoBlueprint.NodeAssembly.Laws
 #print axioms Informal.NodeAssembly.assemble_ok_blueprintAttributeAttachments_iff
 #print axioms Informal.NodeAssembly.assemble_ok_externalRefs
 #print axioms Informal.NodeAssembly.assemble_ok_proofExternalRefs
+
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_canonical_union
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_normalized
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_canonical_nodup
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_present_iff
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_ref_present_iff
+#print axioms Informal.Data.ExternalRef.mergeSnapshots_normalized_fixed
