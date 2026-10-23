@@ -37,9 +37,10 @@ V1 implements the assembly-to-resolver bridge, a two-way acceptance
 characterization, and input-facing priority laws on the merged #469 admission
 boundary. V2a proves snapshot merge union, one-pass normalization, uniqueness,
 and presence laws, with erasure-fixed outputs under an explicit input-stability
-premise. The next bounded milestone is V2b: facet membership, actual node
-declaration union, and the payload frame. Keep environment coherence and
-conservative completion as separate follow-ups.
+premise. V2b proves facet membership and actual node declaration union, under
+explicit selected-reference naming stability and with accepted payload declarations
+retained. The broader payload frame is the next bounded follow-up. Keep
+environment coherence and conservative completion separate.
 Coordinate Lean observation and coverage contracts with the axiom-analysis lane;
 do not replace missing API guarantees with unverified global axioms.
 

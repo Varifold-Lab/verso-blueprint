@@ -1,7 +1,7 @@
 # Verification lane: strengthen the production proof boundary
 
 Owner: contribution/verification lane.
-Status: V1 and V2a implemented; V2b is the next bounded milestone.
+Status: V1 and V2a implemented; V2b membership implemented, payload frame pending.
 Foundation: [#467](https://github.com/leanprover/verso-blueprint/pull/467)
 established the production identified-evidence resolver and its laws;
 [#469](https://github.com/leanprover/verso-blueprint/pull/469) centralized admission
@@ -30,7 +30,7 @@ coordination records.
 | --- | --- | --- | --- |
 | V1 (implemented) | Assembly acceptance, actual resolver-result bridge, input-facing priority laws | Landed #467 and #469 | `NodeAssembly/Laws.lean`; separate direct accepted-node return cleanup and regression |
 | V2a (implemented) | Snapshot merge canonical union, normalization, uniqueness, and presence laws | V1 | Law module for `ExternalRef.mergeSnapshots` |
-| V2b | Raw/present membership on each facet; `Node.leanDecls` union; payload frame | V2a | Assembly/data law modules |
+| V2b (membership implemented; frame pending) | Raw/present membership on each facet; `Node.leanDecls` union; payload frame | V2a | Assembly/data law modules |
 | V3 | Semantic environment coherence and accepted index exactness | V2b; merged #469 admission boundary | Pure state transitions and their law modules; boundary regressions |
 | V4 | Conservative completion through snapshot merge and `nodeCodeHealth` | V2a; agreed status/coverage contract | Status/health law modules; coordinate with axiom-analysis owner |
 | V5 | Evidence persistence and rendering projection correspondence | Relevant V2/V3 results | One serializer/import or rendering boundary per ticket |
@@ -130,22 +130,73 @@ new theorem dependencies alongside the existing assembly and contribution laws.
 No facet, payload, environment, producer, status, or completion claim follows
 from V2a alone. Missing references remain useful evidence in the raw union.
 
-## V2b: facts reach the actual node
+## V2b: facet and node membership (implemented); payload frame pending
 
-Next bounded milestone: lift the snapshot laws through facet folds and prove
-actual accepted-node declaration membership and the payload frame. Keep
-environment and completion policy work in their separate follow-ups.
+Membership baseline: `66172fea6d05474b615b4a37b2c5936a9a562443` on `v4.35.0`.
+Runtime behavior is unchanged. The proof modules are
+[`ExternalRef/FoldLaws.lean`](../../src/VersoBlueprint/ExternalRef/FoldLaws.lean),
+[`Node/MembershipLaws.lean`](../../src/VersoBlueprint/Node/MembershipLaws.lean),
+and [`NodeAssembly/MembershipLaws.lean`](../../src/VersoBlueprint/NodeAssembly/MembershipLaws.lean).
 
-Lift through each facet's support fold independently. Then prove, for the
-actual accepted node, that `Node.leanDecls` contains exactly selected
-associations union payload declarations. Retain the payload disjunct for
-literate code and make canonical-name conventions explicit.
+`mergeSnapshots_fold_membership` is one principle over the actual
+`List.foldl (fun acc input => ExternalRef.mergeSnapshots acc (select input)) #[]`.
+Its Boolean argument selects raw membership (`false`, including missing
+observations) or present membership (`true`). Both use one-pass erased input
+keys. The same fold has unique output canonical fields without a naming premise.
 
-Add a frame property for payload bodies, dependencies, numbering, literate/Rust
-code, markup, and unrelated metadata. Preserve explicit kind; allow the
-documented association-based inference when kind is not explicit. Do not claim
-literal equality of order-sensitive snapshot or support arrays under arbitrary
-permutations.
+Repeated merges erase accumulated keys again. The fold principle therefore
+requires, explicitly for every selected input reference including missing ones,
+`eraseMacroScopes (eraseMacroScopes ref.canonical) = eraseMacroScopes ref.canonical`.
+`mergeSnapshots_fold_normalized` proves the resulting fields are erasure-fixed.
+The facet theorems require stability only for records of the assembled label,
+independently for `references` and `proofReferences`. They use the existing
+successful-assembly projection and support laws, rather than a new selection
+policy. Raw membership and present membership have separate corollaries.
+
+This is a conditional naming theorem, not a producer guarantee. Read-only
+inspection found erasure in `ExternalRef.ofName`, `parsedExternalRef` and
+`resolvedExternalRef` in `Informal/ExternalCode.lean`, and snapshot capture in
+`ExternalRefSnapshot.lean`. Those assignments alone do not establish erasure
+stability on arbitrary `Name` values, and this slice proves no producer or
+import invariant that discharges the premise.
+
+`Node.mem_leanDecls` describes arbitrary nodes with the projection's exact names:
+present external snapshots contribute `ref.canonical.eraseMacroScopes`;
+literate blocks contribute another erasure of each `Code.definedDeclNames`
+entry. The expanded `assemble_ok_leanDecls_literate` result keeps the accepted
+payload literate disjunct, without assuming literate-name stability. The final
+`assemble_ok_leanDecls` states the literal union
+`Association records label name ∨ name ∈ base.leanDecls`, where `base` is the
+actual successful empty-seeded payload reducer result. Its view corollary uses
+the actual accepted resolver declaration projection.
+
+The literal accepted-base union also uses the narrow two-field preservation
+`Node.applyContributions_externalRefs` proof beside the private payload reducer
+in `NodeAssembly.lean`. It preserves only `externalRefs` and
+`proofExternalRefs`. The declaration is in that file
+because Lean's non-module private boundary prevents ordinary law imports from
+naming the reducer internals; no helper is exposed and no law import or runtime
+code is added. The remaining proofs stay outside production import closure.
+
+Acceptance commands:
+
+```sh
+python3 -m scripts.blueprint_harness require-branch-role default_dev
+scripts/lean-low-priority lake build VersoBlueprint +VersoBlueprint.Contributions.Laws:olean +VersoBlueprint.NodeAssembly.Laws:olean +VersoBlueprint.ExternalRef.Laws:olean +VersoBlueprint.NodeAssembly.MembershipLaws:olean
+scripts/lean-low-priority lake lean tests/verification/AssemblyAxiomAudit.lean
+git diff --check
+```
+
+CI builds the new membership law root and the tracked audit prints its public
+theorem dependencies, including the payload preservation bridge. Local evidence
+and the macro-scope counterexample remain untracked.
+
+The broader payload frame remains a separate, unimplemented follow-up: bodies,
+dependencies, numbering, literate/Rust code, markup, and unrelated metadata.
+Preserve explicit kind and allow documented association-based inference when
+kind is not explicit. Do not claim equality of order-sensitive snapshot or
+support arrays under arbitrary permutations. Environment and completion policy
+remain in their own later tickets.
 
 ## V3: coherent states and rejection
 
