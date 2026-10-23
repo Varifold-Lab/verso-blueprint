@@ -301,12 +301,22 @@ private def project (node : Node) (view : View) : Assembly :=
     priority := view.priority
     kind := kind }, view }
 
+/-- Check selected names without rewriting the complete retained evidence.
+A second erasure must not move a key after a snapshot fold has normalized it once. -/
+def referenceNameErrors (label : Label) (records : List Record) : Array String :=
+  ((recordsFor label records).flatMap fun record =>
+    record.allReferences.toList.filterMap fun ref =>
+      if ref.canonical.eraseMacroScopes.eraseMacroScopes == ref.canonical.eraseMacroScopes then none
+      else some s!"Label {label} has external Lean reference '{ref.written}' with unstable canonical name '{ref.canonical}': erasing macro scopes again changes the declaration key").toArray
+
 def assemble (label : Label) (payloads : Array NodeContribution) (records : List Record) :
     Except (Array String) Assembly :=
   match Node.applyContributions label {} payloads with
   | .error errors => .error errors
   | .ok node => match resolve label records with
     | .error result => .error (diagnosticMessages label result)
-    | .ok view => .ok (project node view)
+    | .ok view =>
+      let errors := referenceNameErrors label records
+      if errors.isEmpty then .ok (project node view) else .error errors
 
 end Informal.NodeAssembly

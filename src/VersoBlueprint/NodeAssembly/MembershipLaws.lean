@@ -38,77 +38,69 @@ Use `false` for raw membership and `true` for present membership. -/
 theorem assemble_ok_externalRefs_membership {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.references,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (requirePresent : Bool) (name : Name) :
     (∃ ref ∈ assembled.node.externalRefs,
       ref.canonical = name ∧ (requirePresent = true → ref.present = true)) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.references,
         ref.canonical.eraseMacroScopes = name ∧ (requirePresent = true → ref.present = true) := by
   rw [assemble_ok_externalRefs h]
-  exact selected_fold_membership h Record.references stable requirePresent name
+  exact selected_fold_membership h Record.references
+    (fun record hr hl ref href => (assemble_ok_stableReferences h) record hr hl ref
+      (Array.mem_append.mpr (.inl href))) requirePresent name
 
 /-- The same principle for the proof facet, with no statement-reference inputs. -/
 theorem assemble_ok_proofExternalRefs_membership {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.proofReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (requirePresent : Bool) (name : Name) :
     (∃ ref ∈ assembled.node.proofExternalRefs,
       ref.canonical = name ∧ (requirePresent = true → ref.present = true)) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.proofReferences,
         ref.canonical.eraseMacroScopes = name ∧ (requirePresent = true → ref.present = true) := by
   rw [assemble_ok_proofExternalRefs h]
-  exact selected_fold_membership h Record.proofReferences stable requirePresent name
+  exact selected_fold_membership h Record.proofReferences
+    (fun record hr hl ref href => (assemble_ok_stableReferences h) record hr hl ref
+      (Array.mem_append.mpr (.inr href))) requirePresent name
 
 /-- Raw statement membership includes missing observations. -/
 theorem assemble_ok_externalRefs_raw_iff {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.references,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     (∃ ref ∈ assembled.node.externalRefs, ref.canonical = name) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.references,
         ref.canonical.eraseMacroScopes = name := by
-  simpa using assemble_ok_externalRefs_membership h stable false name
+  simpa using assemble_ok_externalRefs_membership h false name
 
 /-- Present statement membership retains any present matching observation. -/
 theorem assemble_ok_externalRefs_present_iff {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.references,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     (∃ ref ∈ assembled.node.externalRefs, ref.canonical = name ∧ ref.present = true) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.references,
         ref.canonical.eraseMacroScopes = name ∧ ref.present = true := by
-  simpa using assemble_ok_externalRefs_membership h stable true name
+  simpa using assemble_ok_externalRefs_membership h true name
 
 /-- Raw proof membership includes missing observations. -/
 theorem assemble_ok_proofExternalRefs_raw_iff {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.proofReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     (∃ ref ∈ assembled.node.proofExternalRefs, ref.canonical = name) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.proofReferences,
         ref.canonical.eraseMacroScopes = name := by
-  simpa using assemble_ok_proofExternalRefs_membership h stable false name
+  simpa using assemble_ok_proofExternalRefs_membership h false name
 
 /-- Present proof membership retains any present matching observation. -/
 theorem assemble_ok_proofExternalRefs_present_iff {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly}
     (h : assemble label payloads records = .ok assembled)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.proofReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     (∃ ref ∈ assembled.node.proofExternalRefs, ref.canonical = name ∧ ref.present = true) ↔
       ∃ record ∈ records, record.label = label ∧ ∃ ref ∈ record.proofReferences,
         ref.canonical.eraseMacroScopes = name ∧ ref.present = true := by
-  simpa using assemble_ok_proofExternalRefs_membership h stable true name
+  simpa using assemble_ok_proofExternalRefs_membership h true name
 
 /-- The projection retains the accepted payload reducer's literate blocks.
 This is the minimal payload bridge needed for declaration membership. -/
@@ -122,9 +114,11 @@ theorem assemble_ok_literateCodes {label : Label} {payloads : Array NodeContribu
   cases hr : resolve label records with
   | error _ => simp [hr] at h
   | ok view =>
-    simp [hr] at h
-    cases h
-    rfl
+    simp only [hr] at h
+    split at h
+    · cases h
+      rfl
+    · contradiction
 
 private theorem association_facets (records : List Record) (label : Label) (name : Name) :
     Association records label name ↔
@@ -136,26 +130,17 @@ private theorem association_facets (records : List Record) (label : Label) (name
     and_comm, and_left_comm]
 
 /-- Accepted declarations are selected present associations union accepted payload
-literate declarations. Stability is an explicit premise for every selected external
-observation, including missing ones. No stability premise is needed for literate names. -/
+literate declarations. Successful admission checks every selected external
+observation, including missing ones. No naming premise is needed from the caller. -/
 theorem assemble_ok_leanDecls_literate {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly} {base : Node}
     (h : assemble label payloads records = .ok assembled)
     (hb : Node.applyContributions label {} payloads = .ok base)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.allReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     name ∈ assembled.node.leanDecls ↔ Association records label name ∨
       (∃ code ∈ base.literateCodes, ∃ declaration ∈ code.definedDeclNames,
         declaration.eraseMacroScopes = name) := by
-  have statementStable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.references,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes := by
-    intro record hr hl ref href
-    exact stable record hr hl ref (Array.mem_append.mpr (.inl href))
-  have proofStable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.proofReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes := by
-    intro record hr hl ref href
-    exact stable record hr hl ref (Array.mem_append.mpr (.inr href))
+  have stable := assemble_ok_stableReferences h
   have supportStable : ∀ record ∈ assembled.view.supports, ∀ ref ∈ record.allReferences,
       ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes := by
     intro record hr
@@ -176,8 +161,8 @@ theorem assemble_ok_leanDecls_literate {label : Label} {payloads : Array NodeCon
   rw [Node.mem_leanDecls_of_fixed assembled.node fixed name, assemble_ok_literateCodes h hb]
   apply or_congr_left
   simp only [Node.externalAssociationSnapshots, Array.mem_append, or_and_right, exists_or]
-  rw [assemble_ok_externalRefs_present_iff h statementStable,
-    assemble_ok_proofExternalRefs_present_iff h proofStable]
+  rw [assemble_ok_externalRefs_present_iff h,
+    assemble_ok_proofExternalRefs_present_iff h]
   exact (association_facets records label name).symm
 
 /-- The accepted node's declarations are exactly selected present associations
@@ -186,8 +171,6 @@ theorem assemble_ok_leanDecls {label : Label} {payloads : Array NodeContribution
     {records : List Record} {assembled : Assembly} {base : Node}
     (h : assemble label payloads records = .ok assembled)
     (hb : Node.applyContributions label {} payloads = .ok base)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.allReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     name ∈ assembled.node.leanDecls ↔ Association records label name ∨ name ∈ base.leanDecls := by
   have fields := Node.applyContributions_externalRefs hb
@@ -196,18 +179,16 @@ theorem assemble_ok_leanDecls {label : Label} {payloads : Array NodeContribution
         declaration.eraseMacroScopes = name := by
     rw [Node.mem_leanDecls]
     simp [Node.externalAssociationSnapshots, fields.1, fields.2]
-  rw [assemble_ok_leanDecls_literate h hb stable, baseMembership]
+  rw [assemble_ok_leanDecls_literate h hb, baseMembership]
 
 /-- The same union expressed using the actual accepted resolver declaration projection. -/
 theorem assemble_ok_leanDecls_view {label : Label} {payloads : Array NodeContribution}
     {records : List Record} {assembled : Assembly} {base : Node}
     (h : assemble label payloads records = .ok assembled)
     (hb : Node.applyContributions label {} payloads = .ok base)
-    (stable : ∀ record ∈ records, record.label = label → ∀ ref ∈ record.allReferences,
-      ref.canonical.eraseMacroScopes.eraseMacroScopes = ref.canonical.eraseMacroScopes)
     (name : Name) :
     name ∈ assembled.node.leanDecls ↔ name ∈ assembled.view.declarations ∨ name ∈ base.leanDecls := by
-  rw [assemble_ok_leanDecls h hb stable]
+  rw [assemble_ok_leanDecls h hb]
   rw [resolverLaws.association_exact label records assembled.view (assemble_ok_resolve h) name]
 
 end Informal.NodeAssembly

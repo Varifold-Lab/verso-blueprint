@@ -1,7 +1,8 @@
 # Verification lane: strengthen the production proof boundary
 
 Owner: contribution/verification lane.
-Status: V1 and V2a implemented; V2b membership implemented, payload frame pending.
+Status: V1, V2a, V2b membership, and checked producer-name admission implemented;
+payload frame pending.
 Foundation: [#467](https://github.com/leanprover/verso-blueprint/pull/467)
 established the production identified-evidence resolver and its laws;
 [#469](https://github.com/leanprover/verso-blueprint/pull/469) centralized admission
@@ -56,8 +57,10 @@ refactor, or additional stored data.
 1. `assemble_ok_resolve`: successful production assembly implies
    `resolve label records = .ok assembled.view`.
 2. `assemble_success_iff` proves assembly success iff the actual payload reducer
-   succeeds, relevant contribution identities do not collide, and priorities
-   do not disagree. The theorem uses the complete record set. Authored-origin
+   succeeds, relevant contribution identities do not collide, priorities do not
+   disagree, and the selected reference-name check succeeds. The latter is the
+   checked producer-admission follow-up below. The theorem uses the complete
+   record set. Authored-origin
    validity remains an environment obligation, not an invented assembler premise.
 3. `assemble_ok_priority_none_iff` proves node priority `none` iff there is no
    input priority claim; `assemble_ok_priority_some_iff` proves node priority
@@ -86,9 +89,9 @@ runs the broader tests; a proof-only change does not need new tests mirroring
 the proof scripts. Any further production behavior change needs a separately
 scoped fix with a counterexample; it is outside these laws.
 
-Exit statement: production assembly succeeds exactly when its two reducers
-permit it, and the returned node's priority agrees with the original identified
-evidence. This does not yet prove actual node declaration membership, producer
+Exit statement: production assembly succeeds exactly when its payload reducer,
+identified-evidence resolver, and selected-name check accept. The returned node's
+priority agrees with the original identified evidence. This does not yet prove actual node declaration membership, producer
 correctness, environment coherence, or whole-database confluence.
 
 ## V2a: snapshot canonical union and presence (implemented)
@@ -133,7 +136,8 @@ from V2a alone. Missing references remain useful evidence in the raw union.
 ## V2b: facet and node membership (implemented); payload frame pending
 
 Membership baseline: `66172fea6d05474b615b4a37b2c5936a9a562443` on `v4.35.0`.
-Runtime behavior is unchanged. The proof modules are
+The initial membership slice changed no runtime behavior. Its subsequent checked
+producer-admission boundary is described below. The proof modules are
 [`ExternalRef/FoldLaws.lean`](../../src/VersoBlueprint/ExternalRef/FoldLaws.lean),
 [`Node/MembershipLaws.lean`](../../src/VersoBlueprint/Node/MembershipLaws.lean),
 and [`NodeAssembly/MembershipLaws.lean`](../../src/VersoBlueprint/NodeAssembly/MembershipLaws.lean).
@@ -148,17 +152,9 @@ Repeated merges erase accumulated keys again. The fold principle therefore
 requires, explicitly for every selected input reference including missing ones,
 `eraseMacroScopes (eraseMacroScopes ref.canonical) = eraseMacroScopes ref.canonical`.
 `mergeSnapshots_fold_normalized` proves the resulting fields are erasure-fixed.
-The facet theorems require stability only for records of the assembled label,
-independently for `references` and `proofReferences`. They use the existing
-successful-assembly projection and support laws, rather than a new selection
-policy. Raw membership and present membership have separate corollaries.
-
-This is a conditional naming theorem, not a producer guarantee. Read-only
-inspection found erasure in `ExternalRef.ofName`, `parsedExternalRef` and
-`resolvedExternalRef` in `Informal/ExternalCode.lean`, and snapshot capture in
-`ExternalRefSnapshot.lean`. Those assignments alone do not establish erasure
-stability on arbitrary `Name` values, and this slice proves no producer or
-import invariant that discharges the premise.
+The generic fold keeps this premise. Assembly-facing facet and node theorems now
+derive it from the executable admission check, so callers do not supply a
+producer-name assumption. Raw and present membership have separate corollaries.
 
 `Node.mem_leanDecls` describes arbitrary nodes with the projection's exact names:
 present external snapshots contribute `ref.canonical.eraseMacroScopes`;
@@ -190,6 +186,44 @@ git diff --check
 CI builds the new membership law root and the tracked audit prints its public
 theorem dependencies, including the payload preservation bridge. Local evidence
 and the macro-scope counterexample remain untracked.
+
+### Checked producer-name admission (implemented)
+
+Baseline: `0d77511cfefa3bb50be7081e10315e00137d7bdd`. The behavior change is a
+shared rejection check in `NodeAssembly.assemble` after payload reduction and the
+complete identified-evidence resolver succeed. `referenceNameErrors` checks both
+facets of records for the selected label, including missing references, without
+rewriting names or filtering evidence. Each failing observation produces a
+label/name diagnostic. Payload, identity-collision, and priority diagnostics keep
+their existing precedence. Unrelated labels are not rejected by this name check.
+
+`referenceNameErrors_isEmpty_iff` proves the actual checker is equivalent to
+`StableReferences records label`. `assemble_ok_stableReferences` proves this
+property for every successful production assembly. `assemble_success_iff`
+includes the check, and the accepted facet and node membership theorems consume
+the proved result. They no longer carry a caller-supplied stability premise.
+
+Directive records reach this boundary through `InProgress.selectedFact?` and
+`contributeRecord`; attributes call the same registration API. Local `State.addNode`
+and imported `State.reassembleImported` both use `NodeAssembly.assemble`. Imported
+collection still retains raw complete records. A malformed imported record
+therefore prevents its label from being accepted, remains available as evidence,
+and cannot be bypassed by a later valid local registration for that label.
+
+This verifies checked acceptance, not a claim that Lean name-resolution APIs
+always produce valid names. `ExternalRef.ofName`, the parsed/resolved wrappers in
+`Informal/ExternalCode.lean`, and `ExternalRefSnapshot` capture apply erasure, but
+that alone is not a proof of stability on arbitrary `Name` values. The gate
+checks their eventual records instead of axiomatizing those APIs or repeatedly
+normalizing a key until its identity changes.
+
+The tracked `ReferenceNameAdmission` regression exercises actual attribute and
+statement/proof directive acceptance, atomic malformed local rejection for both
+facets and both presence values, retained malformed imported evidence, rejection
+of later resurrection, and identity-collision diagnostic precedence. Its import
+provider deliberately injects raw malformed evidence to simulate an external or
+older producer; this bypass exists only in the test fixture. Acceptance also runs
+`scripts/run-lean-tests.sh` and the tracked axiom audit.
 
 The broader payload frame remains a separate, unimplemented follow-up: bodies,
 dependencies, numbering, literate/Rust code, markup, and unrelated metadata.

@@ -13,6 +13,8 @@ import VersoBlueprint.NodeAssembly.MembershipLaws
 #print axioms Informal.Contributions.resolverLaws
 #print axioms Informal.Contributions.resolve_collect
 #print axioms Informal.Contributions.independentAssociations
+#print axioms Informal.NodeAssembly.referenceNameErrors_isEmpty_iff
+#print axioms Informal.NodeAssembly.assemble_ok_stableReferences
 #print axioms Informal.NodeAssembly.assemble_ok_resolve
 #print axioms Informal.NodeAssembly.assemble_success_iff
 #print axioms Informal.NodeAssembly.assemble_ok_priority
