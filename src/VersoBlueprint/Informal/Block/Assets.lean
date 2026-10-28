@@ -43,7 +43,7 @@ def css : String := r##"
 
 .bp_heading_title_row_statement {
   display: inline-grid;
-  grid-template-columns: 11ch 3ch;
+  grid-template-columns: 11ch 3ch auto;
   align-items: baseline;
   column-gap: 0.45rem;
 }
@@ -54,6 +54,10 @@ def css : String := r##"
 
 .bp_label {
   margin-left: 0.5rem;
+}
+
+.bp_title {
+  font-weight: normal;
 }
 
 .bp_heading_title_row_statement .bp_label {

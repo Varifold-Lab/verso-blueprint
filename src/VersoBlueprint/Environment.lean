@@ -33,6 +33,7 @@ structure InProgress where
   effort : Option String := none
   prUrl : Option String := none
   issueUrl : Option String := none
+  statementTitle : Option String := none
   deps : Array UseRef := #[]
   proofUses : Array UseRef := #[]
 deriving Inhabited, Repr
@@ -423,6 +424,7 @@ private def InProgress.toContribution (current : InProgress) (count : Nat) (ref 
   effort := current.effort
   prUrl := current.prUrl
   issueUrl := current.issueUrl
+  statementTitle := current.statementTitle
 }
 
 private def InProgress.selectedFact? (current : InProgress) (ref : Syntax) : CoreM (Option Record) := do

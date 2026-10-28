@@ -96,7 +96,7 @@ private def blockKindRenderStyle (data : BlockData) : BlockKindRenderStyle :=
 
 /-- Render the caption/label row shared by informal block shells. -/
 def renderBlockTitleRow (style : BlockKindRenderStyle)
-    (labelText numberText captionText : String) :
+    (labelText numberText captionText : String) (title? : Option String := none) :
     Verso.Output.Html :=
   open Verso.Output.Html in
   let titleRowClass :=
@@ -110,6 +110,9 @@ def renderBlockTitleRow (style : BlockKindRenderStyle)
     <div class={{titleRowClass}}>
       <span class={{captionClass}} title={{labelText}}> {{.text true captionText}} </span>
       {{ if style.showLabel then {{<span class={{labelClass}}> {{.text true numberText}} </span>}} else .empty }}
+      {{ match title? with
+         | some title => {{<span class="bp_title"> {{.text true s!"({title})"}} </span>}}
+         | none => .empty }}
     </div>
   }}
 
@@ -723,6 +726,8 @@ structure InformalBlockShell where
   labelText : String
   numberText : String
   captionText : String
+  /-- Statement name shown after the number, if any. -/
+  title? : Option String := none
   attrs : Array (String × String) := #[]
   titleRowAttrs? : Option (Array (String × String)) := none
   headerExtras : HeaderExtras := {}
@@ -731,7 +736,8 @@ structure InformalBlockShell where
   showHeader : Bool := true
 
 private def renderShellTitleRow (shell : InformalBlockShell) : Verso.Output.Html :=
-  let titleRow := renderBlockTitleRow shell.style shell.labelText shell.numberText shell.captionText
+  let titleRow :=
+    renderBlockTitleRow shell.style shell.labelText shell.numberText shell.captionText shell.title?
   match shell.titleRowAttrs? with
   | some attrs => .tag "a" attrs titleRow
   | none => titleRow
@@ -798,6 +804,7 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
       labelText
       numberText := ctx.numberText
       captionText := ctx.captionText?.getD style.kindText
+      title? := if data.isProof then none else data.statementTitle
       attrs := ctx.attrs
       titleRowAttrs? := ctx.titleRowAttrs?
       headerExtras

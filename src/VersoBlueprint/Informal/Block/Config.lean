@@ -55,6 +55,8 @@ structure Config where
   prUrl : Option String := none
   /-- Optional tracking-issue URL associated with this statement. -/
   issueUrl : Option String := none
+  /-- Optional statement name shown next to its number, as in `Theorem 2.3 (Name)`. -/
+  title : Option String := none
   /-- Metadata-only dependency edges declared with `(uses := ...)`. -/
   metadataUses : Array Data.UseRef := #[]
   /-- Invalid block-level dependency origin string, when present. -/
@@ -92,7 +94,7 @@ variable [Monad m] [MonadInfoTree m] [MonadResolveName m] [MonadLiftT CoreM m] [
 
 def Config.parse : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean autoDeps parent priority owner tags effort prUrl
-      issueUrl uses usesOrigin usesIntent =>
+      issueUrl title uses usesOrigin usesIntent =>
     let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     let parsedLabel := LabelArg.parse labelArg
     let useMetadata := UseConfig.parseMetadata usesOrigin usesIntent
@@ -108,6 +110,7 @@ def Config.parse : ArgParse m Config :=
       effort := effort
       prUrl := prUrl.map (·.trimAscii.toString)
       issueUrl := issueUrl.map (·.trimAscii.toString)
+      title := title.map (·.trimAscii.toString)
       metadataUses := UseConfig.refsForLabels (UseConfig.parseLabels uses) useMetadata
       invalidMetadataUseOrigin := useMetadata.invalidOrigin
       invalidMetadataUseIntent := useMetadata.invalidIntent
@@ -117,7 +120,7 @@ def Config.parse : ArgParse m Config :=
         <*> .named' `autoDeps true
         <*> .named `parent .string true <*> .named `priority .string true <*> .named `owner .string true
         <*> .named `tags .string true <*> .named `effort .string true <*> .named `pr_url .string true
-        <*> .named `issue_url .string true
+        <*> .named `issue_url .string true <*> .named `title .string true
         <*> .named `uses .string true <*> .named `uses_origin .string true <*> .named `uses_intent .string true
 
 instance : FromArgs Config m where
@@ -138,6 +141,7 @@ structure ResolvedConfig where
   effort : Option String := none
   prUrl : Option String := none
   issueUrl : Option String := none
+  title : Option String := none
   statementUses : Array Data.UseRef := #[]
   proofUses : Array Data.UseRef := #[]
 
@@ -201,6 +205,20 @@ private def resolveTags {m}
     pure cfg.tags
 
 /--
+Validate the statement `title`. Proof blocks reject it, and a blank value counts
+as absent.
+-/
+private def resolveTitle? {m}
+    [Monad m] [MonadOptions m] [MonadLog m] [AddMessageContext m] [MonadFileMap m]
+    (cfg : Config) (isProof : Bool) : m (Option String) := do
+  if isProof then
+    if cfg.title.isSome then
+      logErrorAt cfg.labelSyntax m!"Label {cfg.label} cannot use '(title := ...)' in a proof block"
+    pure none
+  else
+    pure <| cfg.title.filter (!·.isEmpty)
+
+/--
 Validate a URL-valued statement option such as `pr_url`. Proof blocks reject the
 option; a blank value counts as absent; anything else must be an http(s) URL and
 is kept as written after trimming.
@@ -254,6 +272,7 @@ def Config.resolveForDirective {m}
   let tags ← resolveTags cfg isProof
   let prUrl ← resolveHttpUrlOption? cfg isProof "pr_url" cfg.prUrl
   let issueUrl ← resolveHttpUrlOption? cfg isProof "issue_url" cfg.issueUrl
+  let title ← resolveTitle? cfg isProof
   let inferredDeps ←
     if hasExternalRaw && DependencyAnalysis.enabled (← getOptions) cfg.autoDeps then
       liftM <| DependencyAnalysis.inferExternalRefs resolvedExternalCode
@@ -272,6 +291,7 @@ def Config.resolveForDirective {m}
     effort
     prUrl
     issueUrl
+    title
     statementUses := inferredUseRefs.statement
     proofUses := inferredUseRefs.proof
   }

@@ -240,6 +240,8 @@ structure BlockMetadata where
   prUrl : Option String := none
   /-- Tracking issue associated with this informal node, if any. -/
   issueUrl : Option String := none
+  /-- Statement name shown next to the number in headings, if any. -/
+  statementTitle : Option String := none
 deriving Inhabited, Repr, BEq, FromJson, ToJson, Quote
 
 /--
@@ -344,6 +346,7 @@ def RenderNode.ofNode (label : Data.Label) (node : Data.Node)
   priority := node.priority
   prUrl := node.prUrl
   issueUrl := node.issueUrl
+  statementTitle := node.statementTitle
 }
 
 def BlockData.toOccurrence (data : BlockData) : BlockOccurrence := {

@@ -73,6 +73,8 @@ private def mergeContribution (label : Label) (node : Node)
   let effort ← mergeMetadata label "effort values" node.effort incoming.effort
   let prUrl ← mergeMetadata label "PR URLs" node.prUrl incoming.prUrl
   let issueUrl ← mergeMetadata label "issue URLs" node.issueUrl incoming.issueUrl
+  let statementTitle ←
+    mergeMetadata label "titles" node.statementTitle incoming.statementTitle
   let literateCodes := node.literateCodes ++ incoming.literateCodes
   let kindIsExplicit := node.kindIsExplicit || incoming.kind.isSome
   let kind ← match incoming.kind with
@@ -85,7 +87,7 @@ private def mergeContribution (label : Label) (node : Node)
   return { node with
     kind, kindIsExplicit
     count := if node.count == 0 then incoming.count else node.count
-    statement, proof, rustCode, externalMarkup, parent, owner, effort, prUrl, issueUrl
+    statement, proof, rustCode, externalMarkup, parent, owner, effort, prUrl, issueUrl, statementTitle
     literateCodes
     tags := incoming.tags.foldl (fun tags tag => if tags.contains tag then tags else tags.push tag) node.tags }
 

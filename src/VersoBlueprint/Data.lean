@@ -634,6 +634,8 @@ structure Node where
   effort : Option String := none
   prUrl : Option String := none
   issueUrl : Option String := none
+  /-- Optional statement name shown next to the number in headings. -/
+  statementTitle : Option String := none
 deriving Repr, Inhabited
 
 /--
@@ -659,6 +661,8 @@ structure NodeContribution where
   effort : Option String := none
   prUrl : Option String := none
   issueUrl : Option String := none
+  /-- Optional statement name shown next to the number in headings. -/
+  statementTitle : Option String := none
 deriving Repr, Inhabited
 
 /-- Stable canonical union; build an ephemeral index once for this incoming group. -/
